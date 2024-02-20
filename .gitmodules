@@ -1,0 +1,3 @@
+[submodule "lib/DPP"]
+	path = lib/DPP
+	url = git@github.com:brainboxdotcc/DPP.git
