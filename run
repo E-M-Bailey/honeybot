@@ -1,0 +1,2 @@
+#! /bin/bash
+. ./secrets/.env && build/honeybot "$TOKEN" "$GUILD" "$ADMIN" "$HONEYBOT_CHANNEL" "$ADMIN_CHANNEL"
