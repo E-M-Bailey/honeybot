@@ -6,7 +6,8 @@
 
 using namespace std::string_literals;
 
-std::atomic_int init_target = 0, init_counter = 0;
+// Zero iff all get_*_async calls' callbacks have completed.
+std::atomic_int init_counter = 0;
 
 void get_guild_async(dpp::guild &guild, dpp::snowflake id, dpp::cluster &bot)
 {
@@ -17,7 +18,7 @@ void get_guild_async(dpp::guild &guild, dpp::snowflake id, dpp::cluster &bot)
 					  if (callback.is_error())
 					  {
 						  std::cerr << "Failed to get guild.\n";
-						  std::exit(-1);
+						  std::exit(1);
 					  }
 					  guild = callback.get<dpp::guild>();
 					  init_counter--;
@@ -32,7 +33,7 @@ void get_channel_async(dpp::channel &channel, dpp::snowflake id, dpp::cluster &b
 						if (callback.is_error())
 						{
 							std::cerr << "Failed to get channel.\n";
-							std::exit(-1);
+							std::exit(1);
 						}
 						channel = callback.get<dpp::channel>();
 						init_counter--;
@@ -47,7 +48,7 @@ void get_user_async(dpp::user &user, dpp::snowflake id, dpp::cluster &bot)
 					 if (callback.is_error())
 					 {
 						 std::cerr << "Failed to get user.\n";
-						 std::exit(-1);
+						 std::exit(1);
 					 }
 					 user = callback.get<dpp::user_identified>();
 					 init_counter--;
@@ -88,7 +89,6 @@ int main(int argc, char const *argv[])
 			}
 		});
 
-	// TODO maybe this can break if a message is received before other API calls complete?
 	auto const message_create_callback = [&](dpp::message_create_t const &event)
 	{
 		auto const &msg = event.msg;
@@ -106,7 +106,12 @@ int main(int argc, char const *argv[])
 			"You have been banned from the "s + guild.name +
 			" server for suspected spam. If you believe this was an error, or your account was hacked and you have since recovered it, please email "s +
 			ADMIN_NAME + "."s);
-		bot.direct_message_create(msg.author.id, author_notif);
+		auto const dm_create_callback = [&](dpp::confirmation_callback_t const &callback)
+		{
+			if (callback.is_error())
+				std::cout << "Failed to send DM notification.\n" << std::flush;
+		};
+		bot.direct_message_create(msg.author.id, author_notif, dm_create_callback);
 
 		bot.set_audit_reason("Suspected spam");
 		bot.guild_ban_add(guild.id, msg.author.id, 3600);
